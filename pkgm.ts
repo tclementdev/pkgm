@@ -367,8 +367,14 @@ async function mirror_directory(dst: string, src: string, prefix: string) {
       if (existsSync(targetPath)) {
         await Deno.remove(targetPath);
       }
-      // Create a hard link for files
-      await Deno.link(sourcePath, targetPath);
+      try {
+        // Create a hard link for files
+        await Deno.link(sourcePath, targetPath);
+      } catch {
+        // Fall back to a regular copy if hard linking fails (it is pretty typical
+        // for Linux distributions to setup home directories on a separate volume).
+        await Deno.copyFile(sourcePath, targetPath);
+      }
     } else if (fileInfo.isSymlink) {
       // Recreate symlink in the target directory
       const linkTarget = await Deno.readLink(sourcePath);
