@@ -347,6 +347,7 @@ async function query_pkgx(
 }
 
 async function mirror_directory(dst: string, src: string, prefix: string) {
+  let warned_copy_fallback = false;
   await processEntry(join(src, prefix), join(dst, prefix));
 
   async function processEntry(sourcePath: string, targetPath: string) {
@@ -368,11 +369,12 @@ async function mirror_directory(dst: string, src: string, prefix: string) {
         await Deno.remove(targetPath);
       }
       try {
-        // Create a hard link for files
         await Deno.link(sourcePath, targetPath);
       } catch {
-        // Fall back to a regular copy if hard linking fails (it is pretty typical
-        // for Linux distributions to setup home directories on a separate volume).
+        if (!warned_copy_fallback) {
+          console.warn("%c! hardlinking failed (possibly cross-device?), falling back to file copy", "color:yellow");
+          warned_copy_fallback = true;
+        }
         await Deno.copyFile(sourcePath, targetPath);
       }
     } else if (fileInfo.isSymlink) {
